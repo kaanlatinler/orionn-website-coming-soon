@@ -1,115 +1,208 @@
-import Image from "next/image";
-import localFont from "next/font/local";
+import { useState, useEffect, useRef } from "react";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
+const ParticleNetwork = () => {
+  const canvasRef = useRef(null);
+  const mouseRef = useRef({ x: 0, y: 0 });
+  const particlesRef = useRef([]);
+  const contextRef = useRef(null);
 
-export default function Home() {
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const context = canvas.getContext("2d");
+    contextRef.current = context;
+
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+
+    // İlk boyutlandırma
+    resizeCanvas();
+
+    // Pencere boyutu değiştiğinde yeniden boyutlandırma
+    window.addEventListener("resize", resizeCanvas);
+
+    // Mouse pozisyonunu güncelle
+    const handleMouseMove = (e) => {
+      mouseRef.current = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+
+    // Parçacıkları oluştur
+    const createParticles = () => {
+      const particles = [];
+      for (let i = 0; i < 100; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * 0.5,
+          vy: (Math.random() - 0.5) * 0.5,
+          radius: 2,
+        });
+      }
+      particlesRef.current = particles;
+    };
+
+    createParticles();
+
+    // Animasyon döngüsü
+    const animate = () => {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Parçacıkları güncelle ve çiz
+      particlesRef.current.forEach((particle, i) => {
+        // Parçacık hareketini güncelle
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+
+        // Ekran sınırlarını kontrol et
+        if (particle.x < 0 || particle.x > canvas.width) particle.vx *= -1;
+        if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -1;
+
+        // Parçacığı çiz
+        context.beginPath();
+        context.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+        context.fillStyle = "rgba(255, 255, 255, 0.5)";
+        context.fill();
+
+        // Mouse ve diğer parçacıklarla bağlantıları çiz
+        const mouseDistance = Math.hypot(
+          mouseRef.current.x - particle.x,
+          mouseRef.current.y - particle.y
+        );
+        if (mouseDistance < 150) {
+          context.beginPath();
+          context.moveTo(particle.x, particle.y);
+          context.lineTo(mouseRef.current.x, mouseRef.current.y);
+          context.strokeStyle = `rgba(255, 255, 255, ${
+            0.2 * (1 - mouseDistance / 150)
+          })`;
+          context.stroke();
+        }
+
+        particlesRef.current.slice(i + 1).forEach((otherParticle) => {
+          const distance = Math.hypot(
+            otherParticle.x - particle.x,
+            otherParticle.y - particle.y
+          );
+          if (distance < 100) {
+            context.beginPath();
+            context.moveTo(particle.x, particle.y);
+            context.lineTo(otherParticle.x, otherParticle.y);
+            context.strokeStyle = `rgba(255, 255, 255, ${
+              0.2 * (1 - distance / 100)
+            })`;
+            context.stroke();
+          }
+        });
+      });
+
+      requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener("resize", resizeCanvas);
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="fixed top-0 left-0 -z-10" />;
+};
+
+const ComingSoonPage = () => {
+  const [timeLeft, setTimeLeft] = useState({
+    hours: 24,
+    minutes: 0,
+    seconds: 0,
+  });
+
+  useEffect(() => {
+    const targetTime = new Date().getTime() + 24 * 60 * 60 * 1000;
+
+    const timer = setInterval(() => {
+      const now = new Date().getTime();
+      const difference = targetTime - now;
+
+      if (difference <= 0) {
+        clearInterval(timer);
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+
+      const hours = Math.floor(
+        (difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+      );
+      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+      setTimeLeft({ hours, minutes, seconds });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   return (
-    <div
-      className={`${geistSans.variable} ${geistMono.variable} grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]`}
-    >
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              pages/index.js
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900/90 to-gray-800/90 flex flex-col items-center justify-center text-white relative overflow-hidden">
+      {/* Interactive Background */}
+      <ParticleNetwork />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      {/* Logo Container */}
+      <div className="mb-12">
+        <h1 className="text-5xl font-bold tracking-wider">ORIONN</h1>
+        <p className="text-xl text-gray-400 mt-2 text-center">DEVELOPMENT</p>
+      </div>
+
+      {/* Coming Soon Text */}
+      <div className="text-center mb-12">
+        <h2 className="text-4xl font-semibold mb-4">Çok Yakında</h2>
+        <p className="text-gray-400 text-lg">
+          Yeni websitemiz için geri sayım başladı!
+        </p>
+      </div>
+
+      {/* Timer Container */}
+      <div className="flex space-x-6">
+        <div className="flex flex-col items-center">
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4 w-24 h-24 flex items-center justify-center">
+            <span className="text-4xl font-bold">
+              {String(timeLeft.hours).padStart(2, "0")}
+            </span>
+          </div>
+          <span className="text-sm mt-2 text-gray-400">SAAT</span>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
+
+        <div className="flex flex-col items-center">
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4 w-24 h-24 flex items-center justify-center">
+            <span className="text-4xl font-bold">
+              {String(timeLeft.minutes).padStart(2, "0")}
+            </span>
+          </div>
+          <span className="text-sm mt-2 text-gray-400">DAKİKA</span>
+        </div>
+
+        <div className="flex flex-col items-center">
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4 w-24 h-24 flex items-center justify-center">
+            <span className="text-4xl font-bold">
+              {String(timeLeft.seconds).padStart(2, "0")}
+            </span>
+          </div>
+          <span className="text-sm mt-2 text-gray-400">SANİYE</span>
+        </div>
+      </div>
+
+      {/* Social Links */}
+      <div className="mt-12 space-x-6">
         <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          href="https://www.instagram.com/orionndevelopment/"
+          className="text-gray-400 hover:text-white transition-colors"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
+          Instagram
         </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
     </div>
   );
-}
+};
+
+export default ComingSoonPage;
